@@ -25,6 +25,7 @@ from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.routers import DefaultRouter
 from rest_framework_swagger.renderers import OpenAPIRenderer, SwaggerUIRenderer
 
+
 @api_view()
 @renderer_classes([SwaggerUIRenderer, OpenAPIRenderer, renderers.CoreJSONRenderer])
 def schema_view(request):
@@ -39,6 +40,8 @@ urlpatterns = [
     url(r'^regist/$', regist),
     url(r'^$', login),
     url(r'^movie/$', index),
+    # P<id>的作用https://simpleisbetterthancomplex.com/references/2016/10/10/url-patterns.html
+    # Regx 101
     url(r'^movie/video_(?P<id>\d{1,2}).html$', play),
 
     url(r'^swagger$', schema_view),

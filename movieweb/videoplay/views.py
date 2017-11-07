@@ -13,13 +13,15 @@ import requests
 # 导入缓存
 from django.core.cache import cache
 # 导入模型
-from videoplay.models import Movie
+from videoplay.models import Movie, Video
 from videoplay.models import User, UserComment, MoviePay
 # 导入表单
 from .forms import UserForm, UserCommentForm, MoviePayForm
 
+
 class Sign:
     ''' 实例化初始值 '''
+
     def __init__(self, appid, appsecret, url):
         self.appid = appid
         # self.access_token = self.get_access_token(appid, appsecret)
@@ -41,7 +43,7 @@ class Sign:
             'jsapi_ticket': self.jsapi_ticket,
             'timestamp': self.__create_timestamp(),
             'url': url,
-         }
+        }
         # 缓存signature
         # self.signature = cache.get('signature')
         # if self.signature == None:
@@ -49,19 +51,23 @@ class Sign:
         #     self.signature = cache.get('signature')
 
     ''' 获取随机字符串 '''
+
     def __create_nonce_str(self):
         return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(16))
     ''' 获取时间戳 '''
+
     def __create_timestamp(self):
         return int(time.time())
     ''' 获取access_token '''
+
     def get_access_token(self, appid, appsecret):
-        url = 'https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={}&secret={}'.format(appid,appsecret)
+        url = 'https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={}&secret={}'.format(appid, appsecret)
         r = requests.get(url)
         data = r.json()
         access_token = data.get('access_token')
         return access_token
     ''' 获取jsapi_ticket '''
+
     def get_ticket(self, access_token, type='jsapi'):
         url = 'https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token={}&type={}'.format(access_token, type)
         r = requests.get(url)
@@ -69,6 +75,7 @@ class Sign:
         ticket = data.get('ticket')
         return ticket
     ''' 获取signature '''
+
     def sign(self):
         string = '&'.join(['%s=%s' % (key.lower(), self.ret[key]) for key in sorted(self.ret)])
         self.ret['signature'] = hashlib.sha1(string).hexdigest()
@@ -76,6 +83,8 @@ class Sign:
         # return self.ret.get('signature')
 
 """ 视频播放页面 """
+
+
 def play(request, id):
     # 通过 session 来获取传过来的数据 (用户名)
     comment_username = request.session.get('comment_username')
@@ -92,7 +101,7 @@ def play(request, id):
                 # 获取当前时间 (格式化)
                 comment_time = time.strftime('%Y/%m/%d | %H:%M:%S', time.localtime())
                 # 存入数据库
-                UserComment.objects.create(comment_username = comment_username, user_comment = user_comment, comment_time = comment_time)
+                UserComment.objects.create(comment_username=comment_username, user_comment=user_comment, comment_time=comment_time)
                 print user_comment
                 print comment_time
                 # 获取当前除域名以外的请求路径
@@ -110,7 +119,7 @@ def play(request, id):
                 # 获取支付数据
                 movie_pay = uf_payment.cleaned_data.get('movie_pay')
                 # 存入数据库
-                MoviePay.objects.create(pay_username = comment_username, movie_id = movie_id, movie_pay = movie_pay)
+                MoviePay.objects.create(pay_username=comment_username, movie_id=movie_id, movie_pay=movie_pay)
                 # 获取当前除域名以外的请求路径
                 path = request.path
                 ''' 重定向到当前页面 '''
@@ -125,12 +134,17 @@ def play(request, id):
     sign.sign()
     # 将获取到的字符串类型参数转换为 int
     video_id = int(id)
+
     # 获取(数据库)模型中对应电影的对象
-    video_source = Movie.objects.get(id = video_id)
+    # video_source = Movie.objects.get(id=video_id)
+    video_source = Video.objects.get(v_id=video_id)
+    print video_id
+    print video_source
+
     # 获取数据库中所有的评论对象 | all() 和 filter()函数返回一个记录集 (列表)
     comments_list = UserComment.objects.all()
     # 获取数据库中已支付的对象
-    movie_payment_obj = MoviePay.objects.filter(pay_username = comment_username, movie_id = video_id)
+    movie_payment_obj = MoviePay.objects.filter(pay_username=comment_username, movie_id=video_id)
     # 支付 False：未购买 True: 已购买
     pay = False
     if video_id <= 5:
@@ -140,10 +154,15 @@ def play(request, id):
             pay = False
     # 加载视频播放模板
     t = loader.get_template("video.html")
-    c = Context({"user": sign, "video_source": video_source, "video_id": video_id,"movie_payment_obj": len(movie_payment_obj), "pay": pay, "url": url, "comments_list": comments_list})
+    # 被注释的句子是django 1.11的用法，1.1及以下用没注释的句子
+    # c = Context({"user": sign, "video_source": video_source, "video_id": video_id,"movie_payment_obj": len(movie_payment_obj), "pay": pay, "url": url, "comments_list": comments_list})
+    c = {"user": sign, "video_source": video_source, "video_id": video_id, "movie_payment_obj": len(movie_payment_obj), "pay": pay, "url": url, "comments_list": comments_list}
+
     return HttpResponse(t.render(c))
 
 """ 用户注册 """
+
+
 def regist(request):
     if request.method == "POST":
         # 绑定表单
@@ -154,7 +173,7 @@ def regist(request):
             username = uf_regist.cleaned_data.get('username')
             password = uf_regist.cleaned_data.get('password')
             # 存入数据库
-            User.objects.create(username = username, password = password)
+            User.objects.create(username=username, password=password)
             # 跳转到登录界面
             return HttpResponseRedirect('/')
         else:
@@ -166,6 +185,8 @@ def regist(request):
     return HttpResponse(user_regist.render())
 
 """ 用户登录 """
+
+
 def login(request):
     if request.method == 'POST':
         # 绑定表单 | request.Post:获取表单提交的数据 (类字典对象)
@@ -177,11 +198,11 @@ def login(request):
             password = uf_login.cleaned_data['password']
             ''' 异常 用户名不存在 '''
             try:
-                User.objects.get(username = username)
+                User.objects.get(username=username)
             except User.DoesNotExist:
                 return render_to_response('user_login.html', {"userName_error": True})
             # 获取数据库(模型)中对应的对象
-            user = User.objects.filter(username__exact = username, password__exact = password)
+            user = User.objects.filter(username__exact=username, password__exact=password)
             # 如果输入的对象匹配数据库中的对象为 True（存在数据库中）
             if user:
                 # 创建 HTTpResponse 对象（跳转至 /movie 页面）
@@ -192,8 +213,8 @@ def login(request):
                 # request.session['username'] = username  /使用 session 来设置 cookie值， 等效同上
                 return response
             # 输入的密码不匹配数据库中的密码 执行
-            elif password !=  User.objects.get(username = username).password:
-                return render_to_response('user_login.html', {"userPassword_error" : True})
+            elif password != User.objects.get(username=username).password:
+                return render_to_response('user_login.html', {"userPassword_error": True})
 
         # 如果输入的内容不合法（数据为空）
         else:
@@ -204,11 +225,19 @@ def login(request):
     user_login = loader.get_template("user_login.html")
     return HttpResponse(user_login.render())
 """ 网站首页 """
+
+
 def index(request):
     username = request.COOKIES.get('username', None)
     # username = request.session.get('username', 'anonymity') /使用 session 来获取传来的 cookie值， 等效同上
     ''' 设置 session 的数据（传到视频播放页面）'''
     request.session['comment_username'] = username
+
+    videos_list = Video.objects.all()
+
+    # test_code
+    return render_to_response('test_loop.html', {'videos_list': videos_list})
+    # test_code
     # 获取用户名成功 执行
     if username != None:
         return render_to_response('index.html', {"username": username})
@@ -221,6 +250,8 @@ from rest_framework import viewsets
 from videoplay.models import Movie
 from videoplay.serializers import MovieSerializer
 # ViewSets定义了View的行为
+
+
 class SnippetViewSet(viewsets.ModelViewSet):
     queryset = Movie.objects.all()
     serializer_class = MovieSerializer
